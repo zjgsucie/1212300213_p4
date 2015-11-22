@@ -1,0 +1,66 @@
+Keyboard notifier
+键盘事件
+
+One can use register_keyboard_notifier to get called back on keyboard
+events (see kbd_keycode() function for details).  The passed structure is
+keyboard_notifier_param:
+人们可以使用register_keyboard_notifier来获取键盘事件（在函数kbd_keycode()中可以看到更多细节）。传递的结构是keyboard_notifier_param：
+
+- 'vc' always provide the VC for which the keyboard event applies;
+vc始终提供键盘使用的vc
+- 'down' is 1 for a key press event, 0 for a key release;
+键被按下，则down为1，键盘放松，则down为0
+- 'shift' is the current modifier state, mask bit indexes are KG_*;
+shift表示当前的修改状态，屏蔽位是KG_*
+- 'value' depends on the type of event.
+value取决于事件的类型
+
+- KBD_KEYCODE events are always sent before other events, value is the keycode.
+KBD_KEYCODE事件始终处于第一位，它的值是键码
+- KBD_UNBOUND_KEYCODE events are sent if the keycode is not bound to a keysym.
+  value is the keycode.
+当键码没有keysym的时候，KBD_UNBOUND_KEYCODE事件被发送。值是键码。
+- KBD_UNICODE events are sent if the keycode -> keysym translation produced a
+  unicode character. value is the unicode value.
+当keycode -> keysym产生一个unicode字符的时候，KBD_UNICODE被发送。值是uicode值。
+- KBD_KEYSYM events are sent if the keycode -> keysym translation produced a
+  non-unicode character. value is the keysym.
+当keycode -> keysym产生一个非unicode字符的时候，KBD_KEYSYM被发送。值是键码。
+- KBD_POST_KEYSYM events are sent after the treatment of non-unicode keysyms.
+  That permits one to inspect the resulting LEDs for instance.
+在非unicode的keysym处理完毕之后，KBD_POST_KEYSYM被发送。这可以使人们观察LED结果。
+
+For each kind of event but the last, the callback may return NOTIFY_STOP in
+order to "eat" the event: the notify loop is stopped and the keyboard event is
+dropped.
+除了最后一个事件外的每个事件，为了停止事件，调用都可能返回NOTIFY_STOP：通知循环被停止并且键盘事件被丢弃。
+
+In a rough C snippet, we have:
+在一个简略的C程序片段中，我们有：
+
+kbd_keycode(keycode) {
+	...
+	params.value = keycode;
+	if (notifier_call_chain(KBD_KEYCODE,&params) == NOTIFY_STOP)
+	    || !bound) {
+		notifier_call_chain(KBD_UNBOUND_KEYCODE,&params);
+		return;
+	}
+
+	if (unicode) {
+		param.value = unicode;
+		if (notifier_call_chain(KBD_UNICODE,&params) == NOTIFY_STOP)
+			return;
+		emit unicode;
+		return;
+	}
+
+	params.value = keysym;
+	if (notifier_call_chain(KBD_KEYSYM,&params) == NOTIFY_STOP)
+		return;
+	apply keysym;
+	notifier_call_chain(KBD_POST_KEYSYM,&params);
+}
+
+NOTE: This notifier is usually called from interrupt context.
+注意：这个事件通常被从中断上下文中调用
