@@ -1,0 +1,36 @@
+Device Tree Dynamic Resolver Notes
+----------------------------------
+设备树动态解析器笔记
+
+This document describes the implementation of the in-kernel
+Device Tree resolver, residing in drivers/of/resolver.c and is a
+companion document to Documentation/devicetree/dt-object-internal.txt[1]
+这个文档描述了内核内设备数解析器的实现，存在于drivers/of/resolver.c，是文档/devicetree/dt-object-internal.txt的同伴文档。
+
+How the resolver works
+----------------------
+这个解析器是如何工作的
+
+The resolver is given as an input an arbitrary tree compiled with the
+proper dtc option and having a /plugin/ tag. This generates the
+appropriate __fixups__ & __local_fixups__ nodes as described in [1].
+这个解析器首先被寄予一个任意的树，这个树具有dtc选项并且还有一个/plugin/的标签。这产生了如[1]中所说的合适的__fixups__ & __local_fixups__ 节点
+
+In sequence the resolver works by the following steps:
+解析器按照如下步骤工作
+
+1. Get the maximum device tree phandle value from the live tree + 1.
+从树中找到设备数的最大phandle的值并+1
+2. Adjust all the local phandles of the tree to resolve by that amount.
+根据1中找到的值调整现有的所有phandle
+3. Using the __local__fixups__ node information adjust all local references
+   by the same amount.
+用到__local__fixups__节点信息调整所有本地的链接为同一个值
+4. For each property in the __fixups__ node locate the node it references
+   in the live tree. This is the label used to tag the node.
+用__fixups__节点中的每个属性定位它在书中链接的节点。这是用来标识节点的标签。
+5. Retrieve the phandle of the target of the fixup.
+取回fixup的目标的phandle
+6. For each fixup in the property locate the node:property:offset location
+   and replace it with the phandle value.
+为属性中的每个fixup定位:property:offset节点并置换为phandle的值
